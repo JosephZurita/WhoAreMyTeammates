@@ -5,17 +5,17 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Exiled.API.Features;
+using Exiled.Events.EventArgs.Player;
+using MEC;
+using PlayerRoles;
+using WhoAreMyTeammates.Models;
+
 namespace WhoAreMyTeammates
 {
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using Exiled.API.Features;
-    using Exiled.Events.EventArgs;
-    using MEC;
-    using NorthwoodLib.Pools;
-    using WhoAreMyTeammates.Models;
-
     /// <summary>
     /// Handles events derived from <see cref="Exiled.Events.Handlers"/>.
     /// </summary>
@@ -33,62 +33,51 @@ namespace WhoAreMyTeammates
         {
             Timing.CallDelayed(plugin.Config.DelayTime, () =>
             {
-                foreach (WamtBroadcast broadcast in plugin.Config.WamtBroadcasts)
-                    RunBroadcast(broadcast);
+                foreach (KeyValuePair< Team, WamtBroadcast> broadcastKV in plugin.Config.TeamBroadcasts)
+                    RunBroadcast(broadcastKV);
             });
         }
 
-        public void OnChangingRole(ChangingRoleEventArgs ev)
+        public void OnChangingRole(ChangingRoleEventArgs args)
         {
-            var CREV = ev;
             Timing.CallDelayed(1f, () =>
             {
-                foreach (WamtBroadcast broadcast in plugin.Config.WamtBroadcasts)
-                {
-                    List<Player> players = Player.Get(broadcast.Team).ToList();
-                    if (broadcast.ClassChangeIsEnabled)
-                    {
-                        if (players.Contains(ev.Player))
-                            ChangeRoleBc(CREV, broadcast);
-                    }
-                }
+                WamtBroadcast broadcast;
+                Team rcTeam = args.Player.RoleManager.Hub.GetTeam();
+
+                if (   !Enum.IsDefined(typeof(Team), rcTeam) 
+                    || !plugin.Config.TeamBroadcasts.TryGetValue(rcTeam, out broadcast)
+                    || !broadcast.ClassChangeIsEnabled)
+                    return;
+
+                RunBroadcast(new KeyValuePair<Team, WamtBroadcast>(rcTeam, broadcast));
+                
             });
         }
-
-        private void ChangeRoleBc(ChangingRoleEventArgs CREV, WamtBroadcast broadcast)
+        private void RunBroadcast(KeyValuePair<Team, WamtBroadcast> broadcastKV)
         {
-            List<Player> players = Player.Get(broadcast.Team).ToList();
-            if (broadcast.MaxPlayers > -1 && players.Count >= broadcast.MaxPlayers)
-                return;
-            if (players.Count == 1)
-            {
-                DisplayBroadcast(players[0], broadcast.AloneContents, broadcast.Time, broadcast.Type);
-                return;
-            }
-            string contentsFormatted = broadcast.ChangeClassContents.Replace("%list%", GeneratePlayerList(players, broadcast));
-            contentsFormatted = contentsFormatted.Replace("%count%", players.Count.ToString());
-            DisplayBroadcast(CREV.Player, contentsFormatted, broadcast.Time, broadcast.Type);
-        }
-
-        private void RunBroadcast(WamtBroadcast broadcast)
-        {
-            if (!broadcast.IsEnabled)
+            if (!broadcastKV.Value.IsEnabled)
                 return;
 
-            List<Player> players = Player.Get(broadcast.Team).ToList();
-            if (broadcast.MaxPlayers > -1 && players.Count >= broadcast.MaxPlayers)
+            List<Player> players = Player.Get(broadcastKV.Key).ToList();
+            string message;
+
+            if (broadcastKV.Value.MaxPlayers > -1 && players.Count >= broadcastKV.Value.MaxPlayers)
                 return;
 
-            if (players.Count == 1)
-            {
-                Timing.CallDelayed(broadcast.Delay, () => DisplayBroadcast(players[0], broadcast.AloneContents, broadcast.Time, broadcast.Type));
-                return;
-            }
+            /*
+            if (players.Count > 1)
+                message = String.Join(", ", broadcastKV.Key == Team.SCPs ?
+                                            players.Select(player => player.Nickname + " (" + player.Role.Name + ")"):
+                                            players.Select(player => player.Nickname));
+            else message = broadcastKV.Value.AloneContents;
+            */
 
-            string contentsFormatted = broadcast.Contents.Replace("%list%", GeneratePlayerList(players, broadcast));
-            contentsFormatted = contentsFormatted.Replace("%count%", players.Count.ToString());
+            message = broadcastKV.Value.Contents.Replace("%list%", String.Join(", ", players.Select(player => player.Nickname + " (" + player.Role.Name + ")")));
+            message = message.Replace("%count%", players.Count.ToString());
+
             foreach (Player player in players)
-                Timing.CallDelayed(broadcast.Delay, () => DisplayBroadcast(player, contentsFormatted, broadcast.Time, broadcast.Type));
+                Timing.CallDelayed(broadcastKV.Value.Delay, () => DisplayBroadcast(player, message, broadcastKV.Value.Time, broadcastKV.Value.Type));
         }
 
         private void DisplayBroadcast(Player player, string content, ushort duration, DisplayType displayType)
@@ -105,29 +94,6 @@ namespace WhoAreMyTeammates
                     player.SendConsoleMessage(content, "cyan");
                     return;
             }
-        }
-
-        private string GeneratePlayerList(IList<Player> players, WamtBroadcast broadcast)
-        {
-            StringBuilder stringBuilder = StringBuilderPool.Shared.Rent();
-            if (!broadcast.Contents.Contains("%list%"))
-                return string.Empty;
-
-            int cutOff = players.Count - 1;
-            for (int i = 0; i < players.Count; i++)
-            {
-                Player player = players[i];
-
-                stringBuilder.Append(' ').Append(player.Nickname);
-                if (player.IsScp)
-                    stringBuilder.Append(' ').Append('(').Append(player.ReferenceHub.characterClassManager.CurRole.fullName).Append(')');
-
-                if (i != cutOff)
-                    stringBuilder.Append(", ");
-            }
-
-            stringBuilder.Append('.');
-            return StringBuilderPool.Shared.ToStringReturn(stringBuilder).TrimStart();
         }
     }
 }

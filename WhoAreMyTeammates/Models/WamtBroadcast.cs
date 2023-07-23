@@ -5,6 +5,8 @@
 // </copyright>
 // -----------------------------------------------------------------------
 
+using PlayerRoles;
+
 namespace WhoAreMyTeammates.Models
 {
     public class WamtBroadcast
@@ -12,8 +14,6 @@ namespace WhoAreMyTeammates.Models
         public bool IsEnabled { get; set; }
 
         public bool ClassChangeIsEnabled { get; set; }
-
-        public Team Team { get; set; }
 
         public string Contents { get; set; }
 

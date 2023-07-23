@@ -2,6 +2,8 @@
 {
     using CommandSystem;
     using Exiled.API.Features;
+    using Exiled.API.Enums;
+    using PlayerRoles;
     using RemoteAdmin;
     using System;
     using System.Collections.Generic;
@@ -24,46 +26,17 @@
         /// <inheritdoc/>
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
-            if (sender is PlayerCommandSender playerSender)
+            if (sender is PlayerCommandSender playerSender && !Player.Get(playerSender.ReferenceHub).IsScp)
             {
-                if (!playerSender.CharacterClassManager.IsAnyScp())
-                {
-                    response = "You must be an SCP to run this command!";
-                    return false;
-                }
-
-                var scps = Player.Get(Team.SCP);
-                var scpNames = new List<string>();
-                foreach (var scp in scps)
-                {
-                    scpNames.Add(scp.ReferenceHub.characterClassManager.CurRole.fullName);
-                    if (scp != scps.Last())
-                        scpNames.Append(", ");
-                    else
-                        scpNames.Append(".");
-                }
-
-                string NameString = String.Join(",", scpNames);
-                Player.Get(sender).Broadcast(10, $"<color=red>The Following SCPs are ingame: {NameString}</color>");
-                response = $"The Following SCPs are ingame: {NameString}";
-                return true;
+                response = "Player must be SCP to execute command";
+                return false;
             }
-            else
-            {
-                var scps = Player.Get(Team.SCP);
-                var scpNames = new List<string>();
-                foreach (var scp in scps)
-                {
-                    scpNames.Add(scp.ReferenceHub.characterClassManager.CurRole.fullName);
-                    if (scp != scps.Last())
-                        scpNames.Append(", ");
-                    else
-                        scpNames.Append(".");
-                }
 
-                response = $"The Following SCPs are ingame: {scpNames}";
-                return true;
-            }
+            response = "The Following SCPs are ingame: " 
+                     + String.Join(", ", Player.Get(Team.SCPs).Select(scp => scp.Role.Name)) 
+                     + ".";
+            Player.Get(sender).Broadcast(10, $"<color=red>{response}</color>");
+            return true;
         }
     }
 }

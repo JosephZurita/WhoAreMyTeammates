@@ -1,11 +1,4 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="EventHandlers.cs" company="XoMiya-WPC and TheUltiOne">
-// Copyright (c) XoMiya-WPC and TheUltiOne. All rights reserved.
-// Licensed under the CC BY-SA 3.0 license.
-// </copyright>
-// -----------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Exiled.API.Features;
@@ -31,7 +24,7 @@ namespace WhoAreMyTeammates
 
         public void OnRoundStarted()
         {
-            Timing.CallDelayed(plugin.Config.DelayTime, () =>
+            Timing.CallDelayed(plugin.Config.OnRoundDelay, () =>
             {
                 foreach (KeyValuePair< Team, WamtBroadcast> broadcastKV in plugin.Config.TeamBroadcasts)
                     RunBroadcast(broadcastKV);
@@ -40,7 +33,7 @@ namespace WhoAreMyTeammates
 
         public void OnChangingRole(ChangingRoleEventArgs args)
         {
-            Timing.CallDelayed(1f, () =>
+            Timing.CallDelayed(plugin.Config.OnChangeDelay, () =>
             {
                 WamtBroadcast broadcast;
                 Team rcTeam = args.Player.RoleManager.Hub.GetTeam();
@@ -64,20 +57,23 @@ namespace WhoAreMyTeammates
 
             if (broadcastKV.Value.MaxPlayers > -1 && players.Count >= broadcastKV.Value.MaxPlayers)
                 return;
-
-            /*
+            
             if (players.Count > 1)
+            {
                 message = String.Join(", ", broadcastKV.Key == Team.SCPs ?
-                                            players.Select(player => player.Nickname + " (" + player.Role.Name + ")"):
+                                            players.Select(player => player.Nickname + " (" + player.Role.Name + ")") :
                                             players.Select(player => player.Nickname));
+                message = broadcastKV.Value.Contents.Replace("%list%", message);
+                message = message.Replace("%count%", players.Count.ToString());
+            }
             else message = broadcastKV.Value.AloneContents;
-            */
 
-            message = broadcastKV.Value.Contents.Replace("%list%", String.Join(", ", players.Select(player => player.Nickname + " (" + player.Role.Name + ")")));
-            message = message.Replace("%count%", players.Count.ToString());
-
-            foreach (Player player in players)
-                Timing.CallDelayed(broadcastKV.Value.Delay, () => DisplayBroadcast(player, message, broadcastKV.Value.Time, broadcastKV.Value.Type));
+            Timing.CallDelayed(broadcastKV.Value.Delay, () =>
+            {
+                foreach (Player player in players)
+                    DisplayBroadcast(player, message, broadcastKV.Value.Time, broadcastKV.Value.Type);
+            });
+            
         }
 
         private void DisplayBroadcast(Player player, string content, ushort duration, DisplayType displayType)

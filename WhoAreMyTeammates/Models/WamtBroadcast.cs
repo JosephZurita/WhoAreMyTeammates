@@ -1,13 +1,4 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="WamtBroadcast.cs" company="XoMiya-WPC and TheUltiOne">
-// Copyright (c) XoMiya-WPC and TheUltiOne. All rights reserved.
-// Licensed under the CC BY-SA 3.0 license.
-// </copyright>
-// -----------------------------------------------------------------------
-
-using PlayerRoles;
-
-namespace WhoAreMyTeammates.Models
+﻿namespace WhoAreMyTeammates.Models
 {
     public class WamtBroadcast
     {
